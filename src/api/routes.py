@@ -5,7 +5,7 @@ import bcrypt
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.models import db, User
 from api.utils import generate_sitemap, APIException
-from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager, get_jwt
 api = Blueprint('api', __name__)
 
 
@@ -37,20 +37,30 @@ def login():
         return jsonify('There are not user with that gmail'), 400
     if not  bcrypt.checkpw(body['password'].encode('utf-8'), user.password.encode('utf-8')):
         return jsonify('Password Incorrect '), 400
+    else :
+        access_token = create_access_token(identity=user.serialize())
+        return jsonify(message='Login successfully', access_token= access_token), 200
     
-    return jsonify('Login successfully'), 200
 
-    # email = request.json.get("email", None)
-    # password = request.json.get("password", None)
-    # if email != "test" or password != "test":
-    #     return jsonify({"msg": "Bad username or password"}), 401
 
-    # access_token = register(identity=email)
-    # return jsonify(access_token=access_token)
-    # hashed = bcrypt.hashpw(body['password'], bcrypt.gensalt())
-    # print(hashed)
-    # response_body = {
-    #     "message": "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
-    # }
+    #Se debe buscar copiar el token de login "contraseña" e insertalo en autentication,
+    #beare token para poder tener el permiso de obtenerlo 
 
-    # return jsonify(response_body), 200
+@api.route('/private/<int:id>', methods=['GET'])
+@jwt_required()
+def get_all_id(id):
+        user = User.query.get(id)
+        #el get_jwt otros tipos de funcionalidad , como fresh , expiracion del token , etc 
+        token = get_jwt()
+        print(token)
+        return jsonify(user.serialize()), 200
+        
+@api.route('/private', methods=['GET'])
+def handle_hello():
+    all_user = User.query.all()
+    # another form to do it 
+    # serialize_all_user = [user.serialize() for user in all_user]
+    serialize_all_user = list(map(lambda user : user.serialize(), all_user))
+    print(all_user)
+    return jsonify(serialize_all_user), 200
+   
