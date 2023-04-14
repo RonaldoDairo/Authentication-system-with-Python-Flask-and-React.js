@@ -12,27 +12,41 @@ api = Blueprint('api', __name__)
 
 @api.route('/signup', methods=['POST'])
 def register():
-    data= request.get_json()
+    body= request.get_json()
     # new_user= User(data['email'], data['password'],)
-    hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
-    new_user = User(email =data['email'], password=hashed_password)
+    #  hacer validacion para de si existe un password  o imail , que diga not fount 404 etc 
+    hashed_password = bcrypt.hashpw(body['password'].encode('utf-8'), bcrypt.gensalt(14))
+    new_user = User(body['email'], hashed_password.decode())
     db.session.add(new_user)
     db.session.commit()
-    return jsonify(new_user.serialize())
-
-
-
+    print (new_user)
+    return jsonify(new_user.serialize()), 201
 
 @api.route('/login', methods=['POST'])
 def login():
     body = request.get_json()
-    email = request.json.get("email", None)
-    password = request.json.get("password", None)
-    if email != "test" or password != "test":
-        return jsonify({"msg": "Bad username or password"}), 401
+    #another form to do it , it used to simple consults 
+    # user = User.query.filter_by(email = body['email']).one()
 
-    access_token = register(identity=email)
-    return jsonify(access_token=access_token)
+    # This form is complicated 
+    #user = db.session.query(User).filter(User.email == body['email']).one()
+
+    # This form is complicated 
+    user = db.session.query(User).filter(User.email == body['email']).first()
+    if not user:
+        return jsonify('There are not user with that gmail'), 400
+    if not  bcrypt.checkpw(body['password'].encode('utf-8'), user.password.encode('utf-8')):
+        return jsonify('Password Incorrect '), 400
+    
+    return jsonify('Login successfully'), 200
+
+    # email = request.json.get("email", None)
+    # password = request.json.get("password", None)
+    # if email != "test" or password != "test":
+    #     return jsonify({"msg": "Bad username or password"}), 401
+
+    # access_token = register(identity=email)
+    # return jsonify(access_token=access_token)
     # hashed = bcrypt.hashpw(body['password'], bcrypt.gensalt())
     # print(hashed)
     # response_body = {
